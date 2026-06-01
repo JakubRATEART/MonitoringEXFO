@@ -750,4 +750,4 @@ if __name__ == "__main__":
     import uvicorn
     print("Starting Version Monitor server...")
     print("Open http://127.0.0.1:8484 in your browser")
-    uvicorn.run("app:app", host="127.0.0.1", port=8484, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

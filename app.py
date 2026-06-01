@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Request, HTTPException, Header, Depends, status
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
-import sqlite3
-import os
-import sys
+#from fastapi import FastAPI, Request, HTTPException, Header, Depends, status
+#from fastapi.responses import HTMLResponse, JSONResponse
+#from fastapi.staticfiles import StaticFiles
+#from fastapi.middleware.cors import CORSMiddleware
+#from fastapi.templating import Jinja2Templates
+#import sqlite3
+#import os
+#import sys
 from datetime import datetime
 from typing import List
 import logging
@@ -645,7 +645,7 @@ def api_acknowledge(payload: dict):
         cur.execute('SELECT stored_version, stored_release_date FROM devices WHERE model=?', (model,))
         row = cur.fetchone()
         conn.close()
-
+#####
         if not row or not row[0]:
             raise HTTPException(status_code=404, detail='model not found or no version to acknowledge')
 

@@ -1,12 +1,12 @@
 # Splicer Firmware Monitor
-
+TESTTETSTTEST
 Simple monitoring app that:
 - Downloads a PDF containing firmware versions
 - Extracts version info for a list of monitored devices
 - Stores the accepted (stored) version in a local SQLite DB
 - Highlights devices when the detected version differs from the stored value
 - Allows acknowledging a detected change which updates the DB
-
+ 
 Quick start
 
 1. Create and activate your Python environment (you already have a venv configured for this workspace).

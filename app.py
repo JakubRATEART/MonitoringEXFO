@@ -1,20 +1,20 @@
-#from fastapi import FastAPI, Request, HTTPException, Header, Depends, status
-#from fastapi.responses import HTMLResponse, JSONResponse
-#from fastapi.staticfiles import StaticFiles
-#from fastapi.middleware.cors import CORSMiddleware
-#from fastapi.templating import Jinja2Templates
-#import sqlite3
-#import os
-#import sys
+from fastapi import FastAPI, Request, HTTPException, Header, Depends, status
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+import sqlite3
+import os
+import sys
 import sqlite3
 import os
 import sys
 from datetime import datetime
 from typing import List
-#import logging
-#import json
-#import time
-#from typing import Optional
+import logging
+import json
+import time
+from typing import Optional
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
@@ -37,6 +37,7 @@ OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
 ###########################################################################################
+
 def _mask_key(k: str) -> str:
     if not k:
         return 'NONE'

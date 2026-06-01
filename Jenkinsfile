@@ -20,16 +20,19 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+	stage('Deploy') {
             steps {
-                echo 'Deploying application to the Ubuntu host...'
-                
-                // Stop and remove the old container if it's already running
-                sh 'docker stop my-monitoring-app || true'
-                sh 'docker rm my-monitoring-app || true'
+                script {
+                    // Define dynamic names based on the branch
+                    def containerName = "app-${BRANCH_NAME}"
+                    def hostPort = (BRANCH_NAME == 'main') ? '8000' : '8001'
 
-                // Run the new container directly on the Ubuntu server network
-                sh 'docker run -d --name my-monitoring-app -p 8000:3000 monitoring-exfo:latest'
+                    echo "Deploying ${BRANCH_NAME} to port ${hostPort}..."
+                    
+                    sh "docker stop ${containerName} || true"
+                    sh "docker rm ${containerName} || true"
+                    sh "docker run -d --name ${containerName} -p ${hostPort}:8484 monitoring-exfo:latest"
+                }
             }
         }
     }

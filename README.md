@@ -1,5 +1,9 @@
 # Splicer Firmware Monitor
+<<<<<<< HEAD
 TESTTETSTTEST
+=======
+TESTETETETTETETETETETEETETETE
+>>>>>>> feature-test
 Simple monitoring app that:
 - Downloads a PDF containing firmware versions
 - Extracts version info for a list of monitored devices

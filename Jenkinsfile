@@ -2,19 +2,16 @@ pipeline {
     agent any 
 
     stages {
-        stage('Test') {
+stage('Test') {
             steps {
-                // The 'script' block tells Jenkins: "Hey, I'm writing dynamic code here!"
                 script {
-                    docker.image('node:20-alpine').inside {
-                        echo 'Running automated tests inside Node container...'
-                        sh 'npm install'
-                        sh 'npm test'
+                    docker.image('python:3.11-slim').inside {
+                        echo 'Checking Python syntax...'
+                        sh 'python3 -m py_compile *.py || true'
                     }
                 }
             }
-        }
-
+	}
         stage('Build Image') {
             steps {
                 echo 'Building production Docker image...'

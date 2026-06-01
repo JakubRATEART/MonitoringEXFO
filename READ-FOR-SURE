@@ -1,0 +1,8 @@
+echo 'PDF_URL=http://your-server.com/pdf.pdf' > .env
+python app.py
+
+docker run -e PDF_URL="http://your-server.com/pdf.pdf" -p 8383:8383 monitoring-app
+
+curl -X POST http://localhost:8383/api/extraction/update-url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://global-sei.com/sumitomo-electric-splicers/emea/common/img/support/firmware_update/Latest%20software%20version.pdf"}'

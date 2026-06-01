@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-04-28T08:02:25.565987",
+  "pdf_url": "https://global-sei.com/sumitomo-electric-splicers/emea/common/img/support/firmware_update/Latest%20software%20version.pdf",
+  "raw_response": "```json\n[\n    {\n        \"model\": \"High Definition Core Aligning Fusion Splicer\",\n        \"version\": \"1.32\",\n        \"release_date\": \"9 Jul, 2025\"\n    },\n    {\n        \"model\": \"Core Alignment Fusion Splicer\",\n        \"version\": \"1.10\",\n        \"release_date\": \"18 Dec, 2025\"\n    },\n    {\n        \"model\": \"Active Clad Alignment Fusion Splicer\",\n        \"version\": \"1.16\",\n        \"release_date\": \"9 Apr, 2026\"\n    },\n    {\n        \"model\": \"Ribbon Fusion Splicer\",\n        \"version\": \"1.16\",\n        \"release_date\": \"3 Mar, 2026\"\n    },\n    {\n        \"model\": \"Handheld Fusion Splicer\",\n        \"version\": \"1.08\",\n        \"release_date\": \"20 Jul, 2020\"\n    }\n]\n```",
+  "parsed_data": [
+    {
+      "model": "High Definition Core Aligning Fusion Splicer",
+      "version": "1.32",
+      "release_date": "9 Jul, 2025"
+    },
+    {
+      "model": "Core Alignment Fusion Splicer",
+      "version": "1.10",
+      "release_date": "18 Dec, 2025"
+    },
+    {
+      "model": "Active Clad Alignment Fusion Splicer",
+      "version": "1.16",
+      "release_date": "9 Apr, 2026"
+    },
+    {
+      "model": "Ribbon Fusion Splicer",
+      "version": "1.16",
+      "release_date": "3 Mar, 2026"
+    },
+    {
+      "model": "Handheld Fusion Splicer",
+      "version": "1.08",
+      "release_date": "20 Jul, 2020"
+    }
+  ],
+  "grouped_versions": [
+    {
+      "model": "High Definition Core Aligning Fusion Splicer",
+      "version": "1.32",
+      "release_date": "9 Jul, 2025"
+    },
+    {
+      "model": "Core Alignment Fusion Splicer",
+      "version": "1.10",
+      "release_date": "18 Dec, 2025"
+    },
+    {
+      "model": "Active Clad Alignment Fusion Splicer",
+      "version": "1.16",
+      "release_date": "9 Apr, 2026"
+    },
+    {
+      "model": "Ribbon Fusion Splicer",
+      "version": "1.16",
+      "release_date": "3 Mar, 2026"
+    },
+    {
+      "model": "Handheld Fusion Splicer",
+      "version": "1.08",
+      "release_date": "20 Jul, 2020"
+    }
+  ],
+  "extracted_individual_models": []
+}

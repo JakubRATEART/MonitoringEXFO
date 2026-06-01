@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-04-27T11:29:58.677641",
+  "pdf_url": "https://global-sei.com/sumitomo-electric-splicers/emea/common/img/support/firmware_update/Latest%20software%20version.pdf",
+  "raw_response": "```json\n{\n  \"product_category\": {\n    \"High Definition Core Aligning Fusion Splicer\": {\n      \"model\": \"TYPE-72C+ Q102-CA+ TYPE-82C+\",\n      \"version\": \"1.32\",\n      \"release_date\": \"9 Jul, 2025\"\n    },\n    \"Core Alignment Fusion Splicer\": {\n      \"model\": \"T-57C+ T-56+ T-601C+ T-601CS+ Z2C (S/N A4xxxxxxxxxxxx)\",\n      \"version\": \"1.10\",\n      \"release_date\": \"18 Dec, 2025\"\n    },\n    \"Active Clad Alignment Fusion Splicer\": {\n      \"model\": \"T-502S Q502S T-402S 51V/51V Ultra\",\n      \"version\": \"1.16\",\n      \"release_date\": \"9 Apr, 2026\"\n    },\n    \"Ribbon Fusion Splicer\": {\n      \"model\": \"TYPE-72M12+ Q102M12+\",\n      \"version\": \"1.16\",\n      \"release_date\": \"3 Mar, 2026\"\n    },\n    \"Handheld Fusion Splicer\": {\n      \"model\": \"TYPE-201e-VS QH201e-VS TYPE-201e-M4\",\n      \"version\": \"1.08\",\n      \"release_date\": \"20 Jul, 2020\"\n    }\n  }\n}\n```",
+  "parsed_data": {
+    "product_category": {
+      "High Definition Core Aligning Fusion Splicer": {
+        "model": "TYPE-72C+ Q102-CA+ TYPE-82C+",
+        "version": "1.32",
+        "release_date": "9 Jul, 2025"
+      },
+      "Core Alignment Fusion Splicer": {
+        "model": "T-57C+ T-56+ T-601C+ T-601CS+ Z2C (S/N A4xxxxxxxxxxxx)",
+        "version": "1.10",
+        "release_date": "18 Dec, 2025"
+      },
+      "Active Clad Alignment Fusion Splicer": {
+        "model": "T-502S Q502S T-402S 51V/51V Ultra",
+        "version": "1.16",
+        "release_date": "9 Apr, 2026"
+      },
+      "Ribbon Fusion Splicer": {
+        "model": "TYPE-72M12+ Q102M12+",
+        "version": "1.16",
+        "release_date": "3 Mar, 2026"
+      },
+      "Handheld Fusion Splicer": {
+        "model": "TYPE-201e-VS QH201e-VS TYPE-201e-M4",
+        "version": "1.08",
+        "release_date": "20 Jul, 2020"
+      }
+    }
+  },
+  "extracted_versions": [
+    {
+      "model": "TYPE-72C+ Q102-CA+ TYPE-82C+",
+      "version": "1.32",
+      "release_date": "9 Jul, 2025"
+    },
+    {
+      "model": "T-57C+ T-56+ T-601C+ T-601CS+ Z2C (S/N A4xxxxxxxxxxxx)",
+      "version": "1.10",
+      "release_date": "18 Dec, 2025"
+    },
+    {
+      "model": "T-502S Q502S T-402S 51V/51V Ultra",
+      "version": "1.16",
+      "release_date": "9 Apr, 2026"
+    },
+    {
+      "model": "TYPE-72M12+ Q102M12+",
+      "version": "1.16",
+      "release_date": "3 Mar, 2026"
+    },
+    {
+      "model": "TYPE-201e-VS QH201e-VS TYPE-201e-M4",
+      "version": "1.08",
+      "release_date": "20 Jul, 2020"
+    }
+  ]
+}

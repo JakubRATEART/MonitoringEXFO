@@ -3,10 +3,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-#import sqlite3
-#import os
-#import sys
-#import sqlite3
+import sqlite3
+import os
+import sys
+import sqlite3
 import os
 import sys
 from datetime import datetime

@@ -49,7 +49,7 @@ def find_version_in_soup(soup: BeautifulSoup, target: str) -> dict:
         target_l = target.lower()
         target_pattern = target_l.replace('xx', r'\d+').replace('x', r'\d')
         
-        for tag in soup.find_all(text=True):
+        for tag in soup.find_all(string=True):
             t = tag.strip()
             if not t:
                 continue

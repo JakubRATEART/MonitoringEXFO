@@ -24,7 +24,7 @@ up:
 	@echo "🚀 Starting containers..."
 	docker-compose up -d
 	@echo "✅ Containers started"
-	@echo "📍 Access at http://localhost:8383"
+	@echo "📍 Access at http://localhost:8000"
 
 down:
 	@echo "🛑 Stopping containers..."

@@ -1,56 +1,43 @@
-# Use Python 3.11 slim image as base
+# Production Dockerfile for EXFO Version Monitor
 FROM python:3.11-slim
 
-# Set working directory in container
+# Set environment variables for production execution
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PORT=8000
+
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
+# Create a non-root system user and group for security
+RUN groupadd -g 1000 appgroup && \
+    useradd -u 1000 -g appgroup -s /bin/bash -m appuser
 
-# Copy requirements first (for better caching)
+# Copy requirements file first for layer caching
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install dependencies as root
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
-COPY app.py .
-COPY web_monitor.py .
-COPY pdf_scheduler.py .
-COPY pdf_vision_extractor.py .
-COPY monitor_config.py .
-COPY utils.py .
-COPY templates/ templates/
-COPY static/ static/
+# Copy application source code
+COPY app.py web_monitor.py monitor_config.py ./
+COPY templates/ ./templates/
+COPY static/ ./static/
 
-# Create directories with proper permissions before switching user
-RUN mkdir -p extractions && \
-    chmod 777 extractions && \
-    chmod 777 /app
+# Ensure application directory and SQLite database files are owned and writable by appuser
+RUN chown -R appuser:appgroup /app && \
+    chmod -R 775 /app
 
-# Create a non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Switch to non-root user
+USER appuser
 
-# Switch to non-root user - commented out for volume mount compatibility
-# USER appuser
+# Expose server port
+EXPOSE 8000
 
-# Ensure runtime database directory is writable
-RUN chmod 777 /app
+# Health check using built-in urllib (does not depend on external tools)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4)" || exit 1
 
-# Environment variables (can be overridden at runtime)
-ENV API_KEY=""
-ENV PDF_URL="http://example.com/latest_software.pdf"
-ENV OLLAMA_BASE_URL="http://localhost:11434"
-
-# Expose port (app always runs on 8484)
-EXPOSE 8484
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://127.0.0.1:8484/api/status', timeout=5)" || exit 1
-
-# Run the application
-CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8484"]
+# Launch Uvicorn with proxy headers enabled for reverse proxy / load balancer support
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]

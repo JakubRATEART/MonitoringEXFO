@@ -47,7 +47,7 @@ docker-compose up -d
 echo ""
 echo "✅ Version Monitor is running!"
 echo ""
-echo "📍 Access the application at: http://localhost:8383"
+echo "📍 Access the application at: http://localhost:8000"
 echo ""
 echo "📊 Commands:"
 echo "   View logs:     docker-compose logs -f"

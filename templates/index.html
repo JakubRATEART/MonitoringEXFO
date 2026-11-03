@@ -1,28 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
-    <title>Monitorowanie Wersji</title>
+    <title>Monitorowanie Wersji EXFO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/style.css" rel="stylesheet">
   </head>
   <body>
-    <main class="container py-4">
-      <header class="d-flex justify-content-between align-items-center mb-4">
+    <main class="app-container py-3 py-md-4">
+      <header class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom-subtle">
         <div>
-          <h1 class="h4 mb-0">Monitorowanie Wersji</h1>
-          <p class="text-muted small mt-2 mb-0">By Jakub Rogowski</p>
+          <h1 class="h4 mb-0 fw-bold">Monitorowanie Wersji EXFO</h1>
+          <p class="text-muted small mt-1 mb-0">System automatycznego śledzenia wersji oprogramowania EXFO</p>
         </div>
         <nav class="d-flex gap-2">
           <button id="refreshBtn" class="btn btn-outline-primary">Odśwież status</button>
         </nav>
       </header>
 
-      <section id="cards" class="row g-3"></section>
+      <section id="cards"></section>
 
-      <footer id="status-bar" class="d-flex justify-content-between align-items-center mt-3">
-        <div></div>
+      <footer id="status-bar" class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top-subtle">
+        <div class="text-muted small">EXFO Version Monitor</div>
         <div id="last-update" class="text-muted small">Ostatnie uaktualnienie: --:-- <span class="sync-dot sync-unknown"></span></div>
       </footer>
     </main>

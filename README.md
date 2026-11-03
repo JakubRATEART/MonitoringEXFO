@@ -1,66 +1,42 @@
-# Splicer Firmware Monitor
-<<<<<<< HEAD
-TESTTETSTTEST
-=======
-TESTETETETTETETETETETEETETETE
->>>>>>> feature-test
-Simple monitoring app that:
-- Downloads a PDF containing firmware versions
-- Extracts version info for a list of monitored devices
-- Stores the accepted (stored) version in a local SQLite DB
-- Highlights devices when the detected version differs from the stored value
-- Allows acknowledging a detected change which updates the DB
- 
-Quick start
+# EXFO Version Monitor
 
-1. Create and activate your Python environment (you already have a venv configured for this workspace).
+Web application for monitoring software and firmware versions of EXFO devices and applications directly from the EXFO website.
 
-2. Install requirements (if not already installed):
+## Features
+- Scrapes the latest software/firmware versions from official EXFO pages (`apps.exfo.com`)
+- Compares detected versions with stored/acknowledged versions in a local SQLite database (`devices.db`)
+- Visual status indicators:
+  - 🟢 **Green**: Up to date (detected version matches stored version)
+  - 🔴 **Red**: Outdated / New version detected
+  - 🟠 **Orange**: Unknown / Version not found
+- Supports manual refresh and background polling
+- One-click version acknowledgement and storing
+- Protected LAN REST API with `X-Credentials` header authentication
 
-```powershell
-C:/Users/jakub.rogowski/Monitoring_App/.venv/Scripts/python.exe -m pip install -r requirements.txt
+## Quick Start
+
+### Running Locally with Python
+
+1. Install requirements:
+```bash
+pip install -r requirements.txt
 ```
 
-3. Run the server:
-
-```powershell
-C:/Users/jakub.rogowski/Monitoring_App/.venv/Scripts/python.exe -m uvicorn app:app --reload
+2. Start the server:
+```bash
+python -m uvicorn app:app --reload --port 8000
 ```
 
-4. Open http://127.0.0.1:8000 in your browser.
+3. Open http://127.0.0.1:8000 in your browser.
 
-Notes
-- The list of monitored products/URLs is in `app.py` (variable `MONITORED_MAP`).
-- The SQLite DB is saved as `devices.db` in the project root.
-- Acknowledge will update the stored version for that model to the detected one from the latest scan.
+### Running with Docker
 
-Note: The app was updated to monitor web pages instead of the original PDF-based splicer list. The scraping module `web_monitor.py` uses heuristics to find version tokens near the product names on each page.
-
-API key protected LAN API
-------------------------
-
-This project can serve a small LAN API protected by a single API key. Set the `API_KEY` environment variable on the server before starting the app. Example (PowerShell):
-
-```powershell
-$env:API_KEY = 'my-secret-key'
-# start server accessible on LAN for development
-. .\.venv\Scripts\Activate.ps1; uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```bash
+docker-compose up -d
 ```
+Access the application at http://localhost:8000.
 
-Protected endpoints (example):
-- `GET /api/v1/devices` — returns the devices status JSON. Requires header `X-Credentials: <API_KEY>`.
-- `GET /api/v1/keys/validate` — simple validation endpoint to check the provided API key.
-
-Example request from PowerShell (replace with your host IP and API key):
-
-```powershell
-# without header -> will return 401
-# Invoke-RestMethod -Uri 'http://192.168.1.10:8000/api/v1/devices'
-
-# with header
-Invoke-RestMethod -Uri 'http://192.168.1.10:8000/api/v1/devices' -Headers @{ 'X-Credentials' = 'my-secret-key' }
-```
-
-Notes:
-- For development you can use `uvicorn --host 0.0.0.0` to expose the server on the LAN. In production place a TLS-terminating reverse proxy (nginx, Caddy, Traefik) in front of the app and store secrets securely (e.g., environment variables or a secrets manager).
-- Each request is logged with a masked API key and a timing header `X-Process-Time` is added to responses.
+## Configuration
+- Monitored products and URLs are configured in `monitor_config.py` (`MONITORED_MAP`).
+- SQLite database is saved as `devices.db`.
+- Set `API_KEY` in environment or `.env` to protect API endpoints.

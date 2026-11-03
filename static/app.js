@@ -10,7 +10,7 @@ async function fetchStatus() {
 
 function makeCard(device) {
   const col = document.createElement('div');
-  col.className = 'col-12'; // Changed from col-sm-6 col-md-4 - CSS Grid handles layout now
+  col.className = 'card-item';
   col.setAttribute('data-model', device.model);
 
   const card = document.createElement('div');

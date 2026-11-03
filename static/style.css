@@ -48,11 +48,27 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
-h1.h4 {
-  color: var(--text-primary);
-  font-size: clamp(1.2rem, 2vw, 1.5rem);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+/* Header Branding */
+.header-branding {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.header-logo {
+  height: 38px;
+  max-width: 190px;
+  object-fit: contain;
+  display: block;
+}
+
+.author-credit {
+  font-size: 0.65rem;
+  color: #64748b;
+  opacity: 0.35;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  user-select: none;
 }
 
 /* Responsive Cards Grid: 100% width, 4 -> 3 -> 2 -> 1 */
@@ -207,6 +223,47 @@ h1.h4 {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
 }
 
+.status-dot--blue {
+  background-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.35);
+}
+
+/* 24h Blue glow for newly detected updates */
+.card--new-update {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+  animation: blue-pulse 3s ease-in-out infinite alternate;
+}
+
+.card--new-update .card-header.clickable {
+  background-color: rgba(14, 165, 233, 0.12);
+  border-bottom-color: rgba(14, 165, 233, 0.3);
+}
+
+@keyframes blue-pulse {
+  0% {
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.25);
+    border-color: rgba(14, 165, 233, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.55);
+    border-color: #38bdf8;
+  }
+}
+
+.badge-new-update {
+  background-color: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #38bdf8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 0.35rem;
+  letter-spacing: 0.4px;
+}
+
 /* Outdated & status borders */
 .card--outdated {
   border-color: rgba(239, 68, 68, 0.45) !important;
@@ -264,18 +321,6 @@ h1.h4 {
   background-color: var(--green);
   border-color: var(--green);
   color: #ffffff;
-}
-
-.btn-store {
-  color: var(--text-secondary);
-  border-color: var(--border-color);
-  background-color: var(--bg-card-header);
-}
-
-.btn-store:hover:not(:disabled) {
-  background-color: #263042;
-  border-color: var(--border-color-hover);
-  color: var(--text-primary);
 }
 
 .btn:disabled {

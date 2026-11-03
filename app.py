@@ -58,6 +58,17 @@ def init_db(path: str = DB_PATH):
     if db_dir and not os.path.exists(db_dir):
         os.makedirs(db_dir, exist_ok=True)
 
+    if os.path.exists(path):
+        try:
+            os.chmod(path, 0o666)
+        except Exception:
+            pass
+    if db_dir and os.path.exists(db_dir):
+        try:
+            os.chmod(db_dir, 0o777)
+        except Exception:
+            pass
+
     try:
         conn = sqlite3.connect(path)
         cur = conn.cursor()
@@ -70,15 +81,21 @@ def init_db(path: str = DB_PATH):
                 stored_release_date TEXT,
                 acknowledged_version TEXT,
                 acknowledged INTEGER DEFAULT 0,
-                last_checked TEXT
+                last_checked TEXT,
+                new_detected_at TEXT
             )
             """
         )
-        # Add migration for existing databases
+        # Migrations for existing databases
         try:
             cur.execute('SELECT acknowledged_version FROM devices LIMIT 1')
         except sqlite3.OperationalError:
             cur.execute('ALTER TABLE devices ADD COLUMN acknowledged_version TEXT')
+
+        try:
+            cur.execute('SELECT new_detected_at FROM devices LIMIT 1')
+        except sqlite3.OperationalError:
+            cur.execute('ALTER TABLE devices ADD COLUMN new_detected_at TEXT')
 
         cur.execute(
             """
@@ -142,7 +159,7 @@ def record_notification(model: str, version: str):
 def get_db_rows() -> List[dict]:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute('SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked FROM devices')
+    cur.execute('SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked, new_detected_at FROM devices')
     rows = cur.fetchall()
     conn.close()
     devices = []
@@ -154,7 +171,8 @@ def get_db_rows() -> List[dict]:
             'stored_release_date': r[3],
             'acknowledged_version': r[4],
             'acknowledged': bool(r[5]),
-            'last_checked': r[6]
+            'last_checked': r[6],
+            'new_detected_at': r[7] if len(r) > 7 else None
         })
     return devices
 
@@ -251,7 +269,7 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
     cur = conn.cursor()
     for model in MONITORED_MAP.keys():
         cur.execute(
-            'SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked FROM devices WHERE model=?',
+            'SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked, new_detected_at FROM devices WHERE model=?',
             (model,)
         )
         row = cur.fetchone()
@@ -261,16 +279,54 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
             acknowledged_version = row[4]
             acknowledged = bool(row[5])
             last_checked = row[6]
+            new_detected_at = row[7] if len(row) > 7 else None
         else:
             stored = None
             stored_date = None
             acknowledged_version = None
             acknowledged = False
             last_checked = None
+            new_detected_at = None
 
         det = detected.get(model) if detected else None
         detected_version = det.get('version') if det else None
+
+        # Check if a new version update has been detected
+        is_update_detected = False
+        if detected_version and (stored is None or detected_version != stored):
+            is_update_detected = True
+
+        # If update is detected and detection timestamp not yet set, record it now!
+        if is_update_detected and not new_detected_at:
+            new_detected_at = datetime.utcnow().isoformat()
+            cur.execute('UPDATE devices SET new_detected_at=? WHERE model=?', (new_detected_at, model))
+            conn.commit()
+
+        # Check if update is within 24h of first detection
+        is_new_update_24h = False
+        if new_detected_at:
+            try:
+                det_dt = datetime.fromisoformat(new_detected_at)
+                elapsed_seconds = (datetime.utcnow() - det_dt).total_seconds()
+                if 0 <= elapsed_seconds < 86400: # 24 hours
+                    is_new_update_24h = True
+                else:
+                    # After 24 hours, if already acknowledged/up to date, clear timestamp
+                    if stored == detected_version:
+                        cur.execute('UPDATE devices SET new_detected_at=NULL WHERE model=?', (model,))
+                        conn.commit()
+            except Exception as e:
+                logging.warning(f"Failed to calculate 24h window for {model}: {e}")
+
+        # Detected date formatting
         detected_date = None
+        if new_detected_at:
+            detected_date = new_detected_at.split('T')[0]
+        elif last_checked:
+            detected_date = last_checked
+        elif detected_version:
+            detected_date = datetime.now().strftime("%Y-%m-%d")
+
         changed = False
         update_info = None
 
@@ -279,23 +335,24 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
             detected_version = stored
             detected_date = stored_date
             changed = True
-            update_info = f"New version available: {stored}"
+            update_info = f"Nowa wersja dostępna: {stored}"
         elif det and (det.get('update_available', False) or (detected_version and stored and stored != detected_version)):
             changed = True
-            update_info = det.get('latest_text') or f"New version available: {detected_version}"
+            update_info = det.get('latest_text') or f"Nowa wersja: {detected_version}"
         elif detected_version and not stored:
             changed = True
-            update_info = f"New version detected: {detected_version}"
+            update_info = f"Wykryto nową wersję: {detected_version}"
 
         out.append({
             'model': model,
             'category': None,
-            'stored_version': acknowledged_version,
-            'stored_release_date': stored_date if acknowledged_version else None,
+            'stored_version': stored,
+            'stored_release_date': stored_date,
             'detected_version': detected_version,
             'detected_release_date': detected_date,
             'changed': changed,
             'acknowledged': acknowledged,
+            'is_new_update_24h': is_new_update_24h,
             'url': MONITORED_MAP[model],
             'update_info': update_info,
             'last_checked': last_checked
@@ -382,86 +439,72 @@ def api_refresh():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post('/api/store_version')
-def api_store_version(payload: dict):
-    model = payload.get('model')
-    version = payload.get('version')
-    if not model or not version:
-        raise HTTPException(status_code=400, detail='model and version are required')
-
-    try:
-        now = datetime.utcnow().date().isoformat()
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute(
-            'INSERT INTO version_history (model, version, detected_date, stored_date) VALUES (?, ?, ?, ?)',
-            (model, version, now, now)
-        )
-        cur.execute(
-            'INSERT INTO devices (model, stored_version, stored_release_date, last_checked) VALUES (?, ?, ?, ?) '
-            'ON CONFLICT(model) DO UPDATE SET stored_version = excluded.stored_version, stored_release_date = excluded.stored_release_date, last_checked = excluded.last_checked',
-            (model, version, now, now)
-        )
-        conn.commit()
-        conn.close()
-        return JSONResponse(status_code=200, content={'ok': True})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post('/store_version')
-async def store_version_from_request(request: Request):
-    data = await request.json()
-    model = data.get('model')
-    version = data.get('version')
-    detected_date = datetime.now().strftime("%Y-%m-%d")
-    stored_date = datetime.now().strftime("%Y-%m-%d")
-
-    if not model or not version:
-        raise HTTPException(status_code=400, detail="Model and version are required.")
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO version_history (model, version, detected_date, stored_date) VALUES (?, ?, ?, ?)",
-        (model, version, detected_date, stored_date)
-    )
-    conn.commit()
-    conn.close()
-
-    return JSONResponse(content={"message": "Version stored successfully!"})
-
-
 @app.post('/api/acknowledge')
 def api_acknowledge(payload: dict):
+    """
+    Acknowledge new detected version:
+    Immediately writes new version to 'stored_version' (Zapisana)
+    and updates 'stored_release_date' (Kiedy zapisano?) to current date.
+    """
     model = payload.get('model')
+    version = payload.get('version')
     if not model:
-        raise HTTPException(status_code=400, detail='model is required')
+        raise HTTPException(status_code=400, detail='Model is required')
+
     try:
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        cur.execute('SELECT stored_version, stored_release_date FROM devices WHERE model=?', (model,))
-        row = cur.fetchone()
-        conn.close()
 
-        if not row or not row[0]:
-            # If stored_version is not yet set, check if detected version is available
+        # If version not sent in payload, get the latest detected version
+        if not version:
             detected = get_versions_for_map({model: MONITORED_MAP[model]})
-            det_ver = detected.get(model, {}).get('version')
-            if det_ver:
-                now = datetime.now().strftime("%Y-%m-%d")
-                acknowledge_model(model, det_ver, now)
-                return JSONResponse(status_code=200, content={'ok': True})
-            raise HTTPException(status_code=404, detail='model not found or no version to acknowledge')
+            version = detected.get(model, {}).get('version')
 
-        stored_version = row[0]
-        stored_date = row[1] or datetime.now().strftime("%Y-%m-%d")
+        if not version:
+            # Fallback to stored_version if already present
+            cur.execute('SELECT stored_version FROM devices WHERE model=?', (model,))
+            r = cur.fetchone()
+            if r and r[0]:
+                version = r[0]
 
-        acknowledge_model(model, stored_version, stored_date)
-        return JSONResponse(status_code=200, content={'ok': True})
+        if not version:
+            conn.close()
+            raise HTTPException(status_code=404, detail='Nie znaleziono wersji do zatwierdzenia')
+
+        now = datetime.now().strftime("%Y-%m-%d")
+
+        # Immediately update stored_version and stored_release_date
+        cur.execute(
+            """
+            UPDATE devices SET
+                stored_version = ?,
+                stored_release_date = ?,
+                acknowledged_version = ?,
+                acknowledged = 1,
+                last_checked = ?
+            WHERE model = ?
+            """,
+            (version, now, version, now, model)
+        )
+
+        # Update or record in version_history
+        cur.execute('SELECT id FROM version_history WHERE model = ? AND version = ?', (model, version))
+        existing = cur.fetchone()
+        if existing:
+            cur.execute('UPDATE version_history SET stored_date = ? WHERE id = ?', (now, existing[0]))
+        else:
+            cur.execute(
+                'INSERT INTO version_history (model, version, detected_date, stored_date) VALUES (?, ?, ?, ?)',
+                (model, version, now, now)
+            )
+
+        conn.commit()
+        conn.close()
+        return JSONResponse(status_code=200, content={'ok': True, 'stored_version': version, 'stored_date': now})
     except HTTPException:
         raise
     except Exception as e:
+        logging.error(f"Acknowledge failed for {model}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -16,6 +16,15 @@ function makeCard(device) {
   const card = document.createElement('div');
   card.className = 'card h-100';
 
+  // 24h Blue glow for newly detected update
+  if (device.is_new_update_24h) {
+    card.classList.add('card--new-update');
+  } else if (!device.detected_version) {
+    card.classList.add('card--unknown');
+  } else if (device.changed) {
+    card.classList.add('card--outdated');
+  }
+
   // Make only the header clickable for URL
   const header = document.createElement('div');
   header.className = 'card-header clickable';
@@ -32,13 +41,13 @@ function makeCard(device) {
   title.innerText = device.model;
 
   header.appendChild(titleRow);
-  // attach header to card
   card.appendChild(header);
 
   const statusDot = document.createElement('span');
   statusDot.className = 'status-dot';
-  // status coloring: red when outdated (changed), orange when unknown, green when up-to-date
-  if (!device.detected_version) {
+  if (device.is_new_update_24h) {
+    statusDot.classList.add('status-dot--blue');
+  } else if (!device.detected_version) {
     statusDot.classList.add('status-dot--orange');
   } else {
     statusDot.classList.add(device.changed ? 'status-dot--red' : 'status-dot--green');
@@ -56,19 +65,26 @@ function makeCard(device) {
 
   const stored = document.createElement('div');
   stored.className = 'version-info';
-  stored.innerHTML = `<strong>Stored:</strong> ${
+  stored.innerHTML = `<strong>Zapisana:</strong> ${
     device.stored_version
       ? `<span class="version-value stored-version">${device.stored_version}</span>`
-      : '<span class="version-none stored-version">none</span>'
+      : '<span class="version-none stored-version">brak</span>'
   }`;
 
   const detected = document.createElement('div');
   detected.className = 'version-info';
-  detected.innerHTML = `<strong>Detected:</strong> ${
+  detected.innerHTML = `<strong>Wykryta:</strong> ${
     device.detected_version
       ? `<span class="version-value detected-version">${device.detected_version}</span>`
-      : '<span class="version-none detected-version">unknown</span>'
+      : '<span class="version-none detected-version">nieznana</span>'
   }`;
+
+  if (device.is_new_update_24h) {
+    const newBadge = document.createElement('div');
+    newBadge.className = 'badge-new-update';
+    newBadge.innerText = 'Nowa wersja (<24h)';
+    detected.appendChild(newBadge);
+  }
 
   if (device.update_info) {
     const updateInfo = document.createElement('div');
@@ -79,7 +95,7 @@ function makeCard(device) {
 
   const dates = document.createElement('div');
   dates.className = 'text-muted small mt-2';
-  dates.innerHTML = `<strong>Stored date:</strong> <span class="stored-date">${device.stored_release_date || '-'}</span><br><strong>Detected date:</strong> <span class="detected-date">${device.detected_release_date || '-'}</span>`;
+  dates.innerHTML = `<strong>Kiedy zapisano?</strong> <span class="stored-date">${device.stored_release_date || '-'}</span><br><strong>kiedy zapisano?</strong> <span class="detected-date">${device.detected_release_date || '-'}</span>`;
 
   const btnGroup = document.createElement('div');
   btnGroup.className = 'mt-3 d-flex gap-2';
@@ -91,62 +107,34 @@ function makeCard(device) {
   ackBtn.onclick = async () => {
     ackBtn.disabled = true;
     try {
-      const r = await fetch(API_ACK, {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({model: device.model})});
+      const r = await fetch(API_ACK, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: device.model,
+          version: device.detected_version
+        })
+      });
       if (!r.ok) throw new Error('ack failed');
       await refreshAndRender();
     } catch (e) {
       console.error(e);
-      alert('Acknowledgement failed');
+      alert('Zatwierdzanie nie powiodło się');
     } finally {
       ackBtn.disabled = false;
     }
   };
 
-  const storeBtn = document.createElement('button');
-  storeBtn.className = 'btn btn-store btn-sm store-btn';
-  storeBtn.innerText = 'Store Version';
-  storeBtn.onclick = async () => {
-    storeBtn.disabled = true;
-    try {
-      const r = await fetch('/api/store_version', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          model: device.model,
-          version: device.detected_version,
-          date: new Date().toISOString()
-        })
-      });
-      if (!r.ok) throw new Error('store failed');
-      await refreshAndRender();
-    } catch (e) {
-      console.error(e);
-      alert('Storing version failed');
-    } finally {
-      storeBtn.disabled = false;
-    }
-  };
+  btnGroup.appendChild(ackBtn);
 
-  // body content (title already in header)
   body.appendChild(category);
   versionsContainer.appendChild(stored);
   versionsContainer.appendChild(detected);
   body.appendChild(versionsContainer);
   body.appendChild(dates);
-
-  // buttons group
-  btnGroup.appendChild(ackBtn);
-  btnGroup.appendChild(storeBtn);
   body.appendChild(btnGroup);
 
   card.appendChild(body);
-  // apply per-card visual classes for known statuses
-  if (!device.detected_version) {
-    card.classList.add('card--unknown');
-  } else if (device.changed) {
-    card.classList.add('card--outdated');
-  }
-
   col.appendChild(card);
   return col;
 }
@@ -157,17 +145,16 @@ function showLoader() {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'loading-overlay';
-    overlay.innerHTML = `<div class="loader-inner"><div class="spinner"></div><div class="loader-text">Loading…</div></div>`;
+    overlay.innerHTML = `<div class="loader-inner"><div class="spinner"></div><div class="loader-text">Ładowanie…</div></div>`;
     document.body.appendChild(overlay);
   }
   overlay.classList.add('visible');
-  // mark all cards as loading (visual orange) while loader is visible
   try {
     const cards = document.querySelectorAll('#cards .card');
     const dots = document.querySelectorAll('#cards .status-dot');
     cards.forEach(c => c.classList.add('card--loading'));
     dots.forEach(d => {
-      d.classList.remove('status-dot--red', 'status-dot--green', 'status-dot--orange');
+      d.classList.remove('status-dot--red', 'status-dot--green', 'status-dot--orange', 'status-dot--blue');
       d.classList.add('status-dot--orange');
     });
   } catch (e) {
@@ -178,12 +165,9 @@ function showLoader() {
 function hideLoader() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.classList.remove('visible');
-  // remove loading state from cards and restore original status dots
   try {
     const cards = document.querySelectorAll('#cards .card');
-    const dots = document.querySelectorAll('#cards .status-dot');
     cards.forEach(c => c.classList.remove('card--loading'));
-    // After removing loading, re-render to restore correct status colors
     const data = window.__lastDevices || [];
     if (Array.isArray(data) && data.length > 0) {
       renderDevices(data);
@@ -202,18 +186,23 @@ function renderDevices(devices) {
   const seen = new Set();
   devices.forEach(device => {
     seen.add(device.model);
-    // find by data-model attribute
     const selector = `[data-model="${device.model}"]`;
     const existing = container.querySelector(selector);
     if (existing) {
+      // Remove any deprecated store-btn if still present
+      const oldStoreBtn = existing.querySelector('.store-btn');
+      if (oldStoreBtn) oldStoreBtn.remove();
+
       // update fields
       const title = existing.querySelector('.card-title');
       if (title) title.textContent = device.model;
 
       const statusDot = existing.querySelector('.status-dot');
       if (statusDot) {
-        statusDot.classList.remove('status-dot--red', 'status-dot--green', 'status-dot--orange');
-        if (!device.detected_version) {
+        statusDot.classList.remove('status-dot--red', 'status-dot--green', 'status-dot--orange', 'status-dot--blue');
+        if (device.is_new_update_24h) {
+          statusDot.classList.add('status-dot--blue');
+        } else if (!device.detected_version) {
           statusDot.classList.add('status-dot--orange');
         } else {
           statusDot.classList.add(device.changed ? 'status-dot--red' : 'status-dot--green');
@@ -224,10 +213,10 @@ function renderDevices(devices) {
       if (cat) cat.textContent = device.category || '';
 
       const storedSpan = existing.querySelector('.stored-version');
-      if (storedSpan) storedSpan.textContent = device.stored_version || 'none';
+      if (storedSpan) storedSpan.textContent = device.stored_version || 'brak';
 
       const detectedSpan = existing.querySelector('.detected-version');
-      if (detectedSpan) detectedSpan.textContent = device.detected_version || 'unknown';
+      if (detectedSpan) detectedSpan.textContent = device.detected_version || 'nieznana';
 
       const storedDate = existing.querySelector('.stored-date');
       if (storedDate) storedDate.textContent = device.stored_release_date || '-';
@@ -235,21 +224,66 @@ function renderDevices(devices) {
       if (detectedDate) detectedDate.textContent = device.detected_release_date || '-';
 
       const ackBtn = existing.querySelector('.ack-btn');
-      if (ackBtn) ackBtn.disabled = !device.changed;
+      if (ackBtn) {
+        ackBtn.disabled = !device.changed;
+        ackBtn.onclick = async () => {
+          ackBtn.disabled = true;
+          try {
+            const r = await fetch(API_ACK, {
+              method: 'POST',
+              headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({
+                model: device.model,
+                version: device.detected_version
+              })
+            });
+            if (!r.ok) throw new Error('ack failed');
+            await refreshAndRender();
+          } catch (e) {
+            console.error(e);
+            alert('Zatwierdzanie nie powiodło się');
+          } finally {
+            ackBtn.disabled = false;
+          }
+        };
+      }
 
       // update per-card classes
       try {
         const cardEl = existing.querySelector('.card');
         if (cardEl) {
-          cardEl.classList.remove('card--outdated', 'card--unknown', 'card--loading');
-          if (!device.detected_version) cardEl.classList.add('card--unknown');
-          else if (device.changed) cardEl.classList.add('card--outdated');
+          cardEl.classList.remove('card--outdated', 'card--unknown', 'card--loading', 'card--new-update');
+          if (device.is_new_update_24h) {
+            cardEl.classList.add('card--new-update');
+          } else if (!device.detected_version) {
+            cardEl.classList.add('card--unknown');
+          } else if (device.changed) {
+            cardEl.classList.add('card--outdated');
+          }
         }
       } catch (e) {
         console.warn('renderDevices: updating card classes failed', e);
       }
 
-      // update or remove update_info (defensive - DOM may change concurrently)
+      // update or remove badge-new-update
+      try {
+        let badgeEl = existing.querySelector('.badge-new-update');
+        if (device.is_new_update_24h) {
+          if (!badgeEl) {
+            badgeEl = document.createElement('div');
+            badgeEl.className = 'badge-new-update';
+            badgeEl.innerText = 'Nowa wersja (<24h)';
+            const detectedContainer = existing.querySelector('.version-info:last-of-type') || existing.querySelector('.card-body');
+            if (detectedContainer) detectedContainer.appendChild(badgeEl);
+          }
+        } else if (badgeEl) {
+          badgeEl.remove();
+        }
+      } catch (e) {
+        console.warn('renderDevices: badge update failed', e);
+      }
+
+      // update or remove update_info
       try {
         const updateInfoEl = existing.querySelector('.update-info');
         if (device.update_info) {
@@ -268,12 +302,11 @@ function renderDevices(devices) {
         console.warn('renderDevices: update_info DOM operation failed', err);
       }
     } else {
-      // create new card
       container.appendChild(makeCard(device));
     }
   });
 
-  // remove any DOM cards not present in devices (defensive removal)
+  // remove any DOM cards not present in devices
   Array.from(container.querySelectorAll('[data-model]')).forEach(el => {
     try {
       const m = el.getAttribute('data-model');
@@ -281,7 +314,7 @@ function renderDevices(devices) {
         if (el.parentNode) el.parentNode.removeChild(el);
       }
     } catch (err) {
-      console.warn('renderDevices: failed to remove element for model', el && el.getAttribute ? el.getAttribute('data-model') : el, err);
+      console.warn('renderDevices: failed to remove element for model', el, err);
     }
   });
 }
@@ -293,14 +326,12 @@ function updateStatusBar(devices) {
     if (!el) return;
     const now = new Date();
     const time = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-    // overall status logic (priority: red > orange > green)
     const hasChanged = Array.isArray(devices) ? devices.some(d => d.changed) : false;
     const hasUnknown = Array.isArray(devices) ? devices.some(d => !d.detected_version) : false;
-    // if any changed -> red; else if any unknown or currently refreshing -> orange; else green
     let cls = 'sync-green';
     if (hasChanged) cls = 'sync-red';
     else if (window.__isRefreshing || hasUnknown) cls = 'sync-orange';
-    el.innerHTML = `Last update: ${time} <span class="sync-dot ${cls}"></span>`;
+    el.innerHTML = `ostatnie sprawdzanie: ${time} <span class="sync-dot ${cls}"></span>`;
   } catch (err) {
     console.warn('updateStatusBar failed', err);
   }
@@ -314,11 +345,10 @@ async function refreshAndRender() {
   window.__isRefreshing = true;
   showLoader();
   try {
-    // call refresh endpoint to trigger backend update
     await fetch(API_REFRESH, {method: 'POST'});
     const data = await fetchStatus();
     const devices = data.devices || [];
-    window.__lastDevices = devices;  // store for restoring after loading
+    window.__lastDevices = devices;
     console.log('[refreshAndRender] fetched devices count:', devices.length);
     if (!Array.isArray(devices) || devices.length === 0) {
       console.warn('[refreshAndRender] no devices returned; keeping current DOM');
@@ -328,24 +358,20 @@ async function refreshAndRender() {
     updateStatusBar(devices);
   } catch (e) {
     console.error(e);
-    // on error, keep current DOM intact and log; try a best-effort status fetch without clobbering
     try {
       const data = await fetchStatus();
       const devices = data.devices || [];
       if (Array.isArray(devices) && devices.length > 0) {
-        console.log('[refreshAndRender] fallback fetched devices count:', devices.length);
         renderDevices(devices);
         updateStatusBar(devices);
-      } else {
-        console.warn('[refreshAndRender] fallback returned no devices; leaving DOM as-is');
       }
     } catch (err) {
       console.warn('[refreshAndRender] fallback failed, leaving DOM as-is', err);
     }
-    } finally {
-      hideLoader();
-      window.__isRefreshing = false;
-    }
+  } finally {
+    hideLoader();
+    window.__isRefreshing = false;
+  }
 }
 
 // --- Polling support (safe, non-blocking) ---
@@ -353,14 +379,12 @@ let pollMs = 60000; // 60 seconds
 let pollHandle = null;
 
 async function pollOnce() {
-  if (window.__isRefreshing) return; // avoid overlap with manual refresh
+  if (window.__isRefreshing) return;
   try {
     const data = await fetchStatus();
     const devices = data.devices || [];
     if (Array.isArray(devices) && devices.length > 0) {
-      // render silently (no loader)
       renderDevices(devices);
-      console.log('[pollOnce] updated devices count:', devices.length);
       updateStatusBar(devices);
     }
   } catch (err) {
@@ -381,12 +405,11 @@ function stopPolling() {
   console.log('[poll] stopped');
 }
 
-// Pause polling when the tab is hidden to save resources
+// Pause polling when the tab is hidden
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     stopPolling();
   } else {
-    // resume and fetch immediately
     startPolling();
     pollOnce();
   }
@@ -402,33 +425,32 @@ document.addEventListener('DOMContentLoaded', () => {
         await refreshAndRender();
       } catch (e) {
         console.error(e);
-        alert('Refresh failed');
+        alert('Odświeżanie nie powiodło się');
       } finally {
         refreshBtn.disabled = false;
       }
     });
   }
+
   // initial load
   (async () => {
     try {
-        const data = await fetchStatus();
-        const devices = data.devices || [];
-        renderDevices(devices);
-        updateStatusBar(devices);
+      const data = await fetchStatus();
+      const devices = data.devices || [];
+      renderDevices(devices);
+      updateStatusBar(devices);
     } catch (e) {
       const container = document.getElementById('cards');
-      if (container) container.innerHTML = `<div class="alert alert-danger">Error loading data: ${e.message}</div>`;
+      if (container) container.innerHTML = `<div class="alert alert-danger">Błąd ładowania danych: ${e.message}</div>`;
     }
   })();
-  // start background polling
+
   startPolling();
 });
 
-// Global error handlers to capture DOM exceptions and unhandled promise rejections
 window.addEventListener('error', function (ev) {
   try {
     console.error('[global error]', ev.message, 'file:', ev.filename, 'line:', ev.lineno, 'col:', ev.colno, ev.error);
-    console.log('[global error] current #cards count:', document.querySelectorAll('#cards [data-model]').length);
   } catch (e) {
     console.error('error logging failed', e);
   }

@@ -10,14 +10,10 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Create a non-root system user and group for security
-RUN groupadd -g 1000 appgroup && \
-    useradd -u 1000 -g appgroup -s /bin/bash -m appuser
-
 # Copy requirements file first for layer caching
 COPY requirements.txt .
 
-# Install dependencies as root
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source code
@@ -25,12 +21,8 @@ COPY app.py web_monitor.py monitor_config.py ./
 COPY templates/ ./templates/
 COPY static/ ./static/
 
-# Ensure application directory and SQLite database files are owned and writable by appuser
-RUN chown -R appuser:appgroup /app && \
-    chmod -R 775 /app
-
-# Switch to non-root user
-USER appuser
+# Ensure application directory and SQLite database files are fully writable
+RUN chmod -R 777 /app
 
 # Expose server port
 EXPOSE 8000

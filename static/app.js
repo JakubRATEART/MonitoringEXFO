@@ -221,7 +221,7 @@ function renderDevices(devices) {
       const dates = existing.querySelector('.card-dates') || existing.querySelector('.stored-date')?.parentElement;
       if (dates) {
         dates.classList.add('card-dates');
-        dates.innerHTML = `<strong>Data wykrycia:</strong> <span class="detected-date">${device.detected_release_date || '-'}</span><br><strong>Kiedy zapisano?</strong> <span class="stored-date">${device.stored_release_date || '-'}</span>`;
+        dates.innerHTML = `<strong>Data wykrycia:</strong> <span class="detected-date">${device.detected_release_date || '-'}</span><br><strong>Kiedy wykryto?</strong> <span class="stored-date">${device.stored_release_date || '-'}</span>`;
       }
 
       const ackBtn = existing.querySelector('.ack-btn');

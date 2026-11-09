@@ -16,8 +16,8 @@ function makeCard(device) {
   const card = document.createElement('div');
   card.className = 'card h-100';
 
-  // 24h Blue glow for newly detected update
-  if (device.is_new_update_24h) {
+  // 120h (5 days) Blue glow for newly detected update
+  if (device.is_new_update_120h || device.is_new_update_24h) {
     card.classList.add('card--new-update');
   } else if (!device.detected_version) {
     card.classList.add('card--unknown');
@@ -45,7 +45,7 @@ function makeCard(device) {
 
   const statusDot = document.createElement('span');
   statusDot.className = 'status-dot';
-  if (device.is_new_update_24h) {
+  if (device.is_new_update_120h || device.is_new_update_24h) {
     statusDot.classList.add('status-dot--blue');
   } else if (!device.detected_version) {
     statusDot.classList.add('status-dot--orange');
@@ -79,10 +79,10 @@ function makeCard(device) {
       : '<span class="version-none detected-version">nieznana</span>'
   }`;
 
-  if (device.is_new_update_24h) {
+  if (device.is_new_update_120h || device.is_new_update_24h) {
     const newBadge = document.createElement('div');
     newBadge.className = 'badge-new-update';
-    newBadge.innerText = 'Nowa wersja (<24h)';
+    newBadge.innerText = 'Nowa wersja (<5 dni)';
     detected.appendChild(newBadge);
   }
 
@@ -94,8 +94,8 @@ function makeCard(device) {
   }
 
   const dates = document.createElement('div');
-  dates.className = 'text-muted small mt-2';
-  dates.innerHTML = `<strong>Kiedy zapisano?</strong> <span class="stored-date">${device.stored_release_date || '-'}</span><br><strong>kiedy zapisano?</strong> <span class="detected-date">${device.detected_release_date || '-'}</span>`;
+  dates.className = 'text-muted small mt-2 card-dates';
+  dates.innerHTML = `<strong>Data wykrycia:</strong> <span class="detected-date">${device.detected_release_date || '-'}</span><br><strong>Kiedy zapisano?</strong> <span class="stored-date">${device.stored_release_date || '-'}</span>`;
 
   const btnGroup = document.createElement('div');
   btnGroup.className = 'mt-3 d-flex gap-2';
@@ -200,7 +200,7 @@ function renderDevices(devices) {
       const statusDot = existing.querySelector('.status-dot');
       if (statusDot) {
         statusDot.classList.remove('status-dot--red', 'status-dot--green', 'status-dot--orange', 'status-dot--blue');
-        if (device.is_new_update_24h) {
+        if (device.is_new_update_120h || device.is_new_update_24h) {
           statusDot.classList.add('status-dot--blue');
         } else if (!device.detected_version) {
           statusDot.classList.add('status-dot--orange');
@@ -218,10 +218,11 @@ function renderDevices(devices) {
       const detectedSpan = existing.querySelector('.detected-version');
       if (detectedSpan) detectedSpan.textContent = device.detected_version || 'nieznana';
 
-      const storedDate = existing.querySelector('.stored-date');
-      if (storedDate) storedDate.textContent = device.stored_release_date || '-';
-      const detectedDate = existing.querySelector('.detected-date');
-      if (detectedDate) detectedDate.textContent = device.detected_release_date || '-';
+      const dates = existing.querySelector('.card-dates') || existing.querySelector('.stored-date')?.parentElement;
+      if (dates) {
+        dates.classList.add('card-dates');
+        dates.innerHTML = `<strong>Data wykrycia:</strong> <span class="detected-date">${device.detected_release_date || '-'}</span><br><strong>Kiedy zapisano?</strong> <span class="stored-date">${device.stored_release_date || '-'}</span>`;
+      }
 
       const ackBtn = existing.querySelector('.ack-btn');
       if (ackBtn) {
@@ -253,7 +254,7 @@ function renderDevices(devices) {
         const cardEl = existing.querySelector('.card');
         if (cardEl) {
           cardEl.classList.remove('card--outdated', 'card--unknown', 'card--loading', 'card--new-update');
-          if (device.is_new_update_24h) {
+          if (device.is_new_update_120h || device.is_new_update_24h) {
             cardEl.classList.add('card--new-update');
           } else if (!device.detected_version) {
             cardEl.classList.add('card--unknown');
@@ -268,13 +269,15 @@ function renderDevices(devices) {
       // update or remove badge-new-update
       try {
         let badgeEl = existing.querySelector('.badge-new-update');
-        if (device.is_new_update_24h) {
+        if (device.is_new_update_120h || device.is_new_update_24h) {
           if (!badgeEl) {
             badgeEl = document.createElement('div');
             badgeEl.className = 'badge-new-update';
-            badgeEl.innerText = 'Nowa wersja (<24h)';
+            badgeEl.innerText = 'Nowa wersja (<5 dni)';
             const detectedContainer = existing.querySelector('.version-info:last-of-type') || existing.querySelector('.card-body');
             if (detectedContainer) detectedContainer.appendChild(badgeEl);
+          } else {
+            badgeEl.innerText = 'Nowa wersja (<5 dni)';
           }
         } else if (badgeEl) {
           badgeEl.remove();

@@ -82,7 +82,8 @@ def init_db(path: str = DB_PATH):
                 acknowledged_version TEXT,
                 acknowledged INTEGER DEFAULT 0,
                 last_checked TEXT,
-                new_detected_at TEXT
+                new_detected_at TEXT,
+                detected_release_date TEXT
             )
             """
         )
@@ -96,6 +97,13 @@ def init_db(path: str = DB_PATH):
             cur.execute('SELECT new_detected_at FROM devices LIMIT 1')
         except sqlite3.OperationalError:
             cur.execute('ALTER TABLE devices ADD COLUMN new_detected_at TEXT')
+
+        try:
+            cur.execute('SELECT detected_release_date FROM devices LIMIT 1')
+        except sqlite3.OperationalError:
+            cur.execute('ALTER TABLE devices ADD COLUMN detected_release_date TEXT')
+            cur.execute("UPDATE devices SET detected_release_date = substr(new_detected_at, 1, 10) WHERE new_detected_at IS NOT NULL")
+            cur.execute("UPDATE devices SET detected_release_date = stored_release_date WHERE detected_release_date IS NULL AND stored_release_date IS NOT NULL")
 
         cur.execute(
             """
@@ -159,7 +167,7 @@ def record_notification(model: str, version: str):
 def get_db_rows() -> List[dict]:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute('SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked, new_detected_at FROM devices')
+    cur.execute('SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked, new_detected_at, detected_release_date FROM devices')
     rows = cur.fetchall()
     conn.close()
     devices = []
@@ -172,7 +180,8 @@ def get_db_rows() -> List[dict]:
             'acknowledged_version': r[4],
             'acknowledged': bool(r[5]),
             'last_checked': r[6],
-            'new_detected_at': r[7] if len(r) > 7 else None
+            'new_detected_at': r[7] if len(r) > 7 else None,
+            'detected_release_date': r[8] if len(r) > 8 else None
         })
     return devices
 
@@ -254,7 +263,6 @@ def startup_event():
 def index(request: Request):
     return templates.TemplateResponse('index.html', {'request': request})
 
-
 def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
     """Fetch detected versions from EXFO website (if not passed) and merge with DB records."""
     if detected is None:
@@ -269,7 +277,7 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
     cur = conn.cursor()
     for model in MONITORED_MAP.keys():
         cur.execute(
-            'SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked, new_detected_at FROM devices WHERE model=?',
+            'SELECT model, category, stored_version, stored_release_date, acknowledged_version, acknowledged, last_checked, new_detected_at, detected_release_date FROM devices WHERE model=?',
             (model,)
         )
         row = cur.fetchone()
@@ -280,6 +288,7 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
             acknowledged = bool(row[5])
             last_checked = row[6]
             new_detected_at = row[7] if len(row) > 7 else None
+            detected_release_date = row[8] if len(row) > 8 else None
         else:
             stored = None
             stored_date = None
@@ -287,6 +296,7 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
             acknowledged = False
             last_checked = None
             new_detected_at = None
+            detected_release_date = None
 
         det = detected.get(model) if detected else None
         detected_version = det.get('version') if det else None
@@ -299,28 +309,31 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
         # If update is detected and detection timestamp not yet set, record it now!
         if is_update_detected and not new_detected_at:
             new_detected_at = datetime.utcnow().isoformat()
-            cur.execute('UPDATE devices SET new_detected_at=? WHERE model=?', (new_detected_at, model))
+            detected_release_date = new_detected_at.split('T')[0]
+            cur.execute('UPDATE devices SET new_detected_at=?, detected_release_date=? WHERE model=?', (new_detected_at, detected_release_date, model))
             conn.commit()
 
-        # Check if update is within 24h of first detection
-        is_new_update_24h = False
+        # Check if update is within 120h (5 days) of first detection
+        is_new_update_120h = False
         if new_detected_at:
             try:
                 det_dt = datetime.fromisoformat(new_detected_at)
                 elapsed_seconds = (datetime.utcnow() - det_dt).total_seconds()
-                if 0 <= elapsed_seconds < 86400: # 24 hours
-                    is_new_update_24h = True
+                if 0 <= elapsed_seconds < 432000: # 120 hours (5 days)
+                    is_new_update_120h = True
                 else:
-                    # After 24 hours, if already acknowledged/up to date, clear timestamp
+                    # After 120 hours (5 days), if already acknowledged/up to date, clear timestamp
                     if stored == detected_version:
                         cur.execute('UPDATE devices SET new_detected_at=NULL WHERE model=?', (model,))
                         conn.commit()
             except Exception as e:
-                logging.warning(f"Failed to calculate 24h window for {model}: {e}")
+                logging.warning(f"Failed to calculate 120h window for {model}: {e}")
 
-        # Detected date formatting
+        # Detected date formatting - date when new update got fetched
         detected_date = None
-        if new_detected_at:
+        if detected_release_date:
+            detected_date = detected_release_date
+        elif new_detected_at:
             detected_date = new_detected_at.split('T')[0]
         elif last_checked:
             detected_date = last_checked
@@ -333,7 +346,6 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
         # Compare detected version from EXFO with stored/acknowledged version
         if stored and stored != acknowledged_version:
             detected_version = stored
-            detected_date = stored_date
             changed = True
             update_info = f"Nowa wersja dostępna: {stored}"
         elif det and (det.get('update_available', False) or (detected_version and stored and stored != detected_version)):
@@ -352,7 +364,8 @@ def build_status_dict(detected: Optional[Dict[str, Dict]] = None) -> List[dict]:
             'detected_release_date': detected_date,
             'changed': changed,
             'acknowledged': acknowledged,
-            'is_new_update_24h': is_new_update_24h,
+            'is_new_update_24h': is_new_update_120h,
+            'is_new_update_120h': is_new_update_120h,
             'url': MONITORED_MAP[model],
             'update_info': update_info,
             'last_checked': last_checked
